@@ -1,12 +1,24 @@
 GreenFrame
 Copyright (c) 2026 Nathan Pittman. MIT License (see LICENSE).
 
-GreenFrame works with SmoovPlay (https://github.com/smoovplay/smoovplay, MIT License), which must be installed
-separately. GreenFrame includes no SmoovPlay code. The bridge imports SmoovPlay's frame-tap writer
-(framegen.chiaki_tap.FrameTap) from the user's own SmoovPlay installation at run time, and writes the frame-tap
-layout SmoovPlay documents.
+GreenFrame is an unofficial add-on for SmoovPlay (https://github.com/smoovplay/smoovplay), Copyright (c) 2026 the
+SmoovPlay authors, MIT License. SmoovPlay must be installed separately; it does all of the decoding, frame
+generation, upscaling and display. GreenFrame uses from SmoovPlay:
+
+  * SmoovPlay's frame tap: the shared-memory interface ("Local\smoovplay-tap") and compressed-frame layout that
+    SmoovPlay designed and documents for other apps, read by SmoovPlay's run.py --source tap.
+  * SmoovPlay's frame-tap writer class (framegen.chiaki_tap.FrameTap), imported at run time from the user's own
+    SmoovPlay installation; not copied into GreenFrame.
+  * SmoovPlay's bundled Python runtime, which runs GreenFrame's bridge.
+  * One adapted function: nal_units() in bridge/greenframe_bridge.py is adapted from nal_units() in SmoovPlay's
+    framegen/chiaki_tap.py. SmoovPlay's MIT License and copyright notice: licenses/SmoovPlay-LICENSE.txt.
+
+SmoovPlay in turn builds on chiaki-ng (AGPL-3.0), RIFE (hzwer's Practical-RIFE and HolyWu's vs-rife, MIT),
+AMD FidelityFX Super Resolution 1.0 (MIT) and others listed in SmoovPlay's THIRD_PARTY_NOTICES.txt. None of
+these are included in GreenFrame.
 
 Release builds bundle Electron (https://www.electronjs.org/, MIT License) and Chromium; their licenses ship in
 the release folder (LICENSE, LICENSES.chromium.html).
 
-Not affiliated with or endorsed by Microsoft, Xbox, or SmoovPlay. Xbox is a trademark of Microsoft Corporation.
+GreenFrame is not affiliated with or endorsed by the SmoovPlay authors, Microsoft, or Xbox. Xbox is a trademark
+of Microsoft Corporation. GreenFrame uses Xbox Remote Play as Microsoft offers it at xbox.com/play.

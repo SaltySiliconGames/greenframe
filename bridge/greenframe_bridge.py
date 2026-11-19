@@ -42,7 +42,10 @@ def log(msg: str) -> None:
 # ---------------------------------------------------------------- H.264 bitstream helpers
 
 def nal_units(data: bytes):
-    """(type, NAL unit with a 4-byte start code) for each NAL unit of an Annex-B access unit."""
+    """(type, NAL unit with a 4-byte start code) for each NAL unit of an Annex-B access unit.
+
+    Adapted from nal_units() in SmoovPlay's framegen/chiaki_tap.py (MIT License, Copyright (c) 2026 the SmoovPlay
+    authors; see licenses/SmoovPlay-LICENSE.txt), for H.264 only."""
     starts, i = [], 0
     while (i := data.find(b"\x00\x00\x01", i)) >= 0:
         starts.append(i)

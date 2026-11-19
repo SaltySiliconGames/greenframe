@@ -12,6 +12,17 @@ video, the same way it gets the PS5's.
 > generation on a 30 fps game hasn't been confirmed on real hardware yet. Reports are welcome in
 > [Issues](../../issues).
 
+## Built on SmoovPlay
+
+**All the frame generation is SmoovPlay's.** [SmoovPlay](https://github.com/smoovplay/smoovplay), by the SmoovPlay
+authors, does the hard part: GPU decoding, the AI in-between frames (RIFE), upscaling (AMD FSR 1, NVIDIA RTX
+VSR), frame pacing, the settings menu and the window you watch. GreenFrame only gets the Xbox's video into
+SmoovPlay, through the **frame tap** SmoovPlay built for its PS5 support and documents for other apps to use.
+
+If GreenFrame is useful to you, please star and support [SmoovPlay](https://github.com/smoovplay/smoovplay) too.
+GreenFrame is an unofficial add-on: report GreenFrame problems [here](../../issues), not to the SmoovPlay team.
+See [Credits](#credits) for everything GreenFrame uses.
+
 ```
  Xbox ──Remote Play (WebRTC)──▶ GreenFrame window (xbox.com/play)
                                   │ hook: a copy of every H.264 frame, before it's decoded
@@ -170,11 +181,48 @@ Only the binaries are signed; the app's JavaScript under `resources\app` can cha
 
 Latest run: 945 frames, 0 decode errors, keyframes in 41–50 ms.
 
-## Credits and license
+## Credits
 
-GreenFrame is MIT-licensed (see [LICENSE](LICENSE)), © 2026 Nathan Pittman. It sends frames to **SmoovPlay** by
-the SmoovPlay developers (MIT), through SmoovPlay's frame tap, and needs SmoovPlay installed. It includes no
-SmoovPlay code; see [NOTICE](NOTICE). Built on [Electron](https://www.electronjs.org/) (MIT).
+GreenFrame stands on other people's work. Here's what it uses and from whom.
 
-GreenFrame isn't affiliated with or endorsed by Microsoft, Xbox or SmoovPlay. Xbox is a trademark of Microsoft.
-It uses Xbox Remote Play as Microsoft offers it at xbox.com/play, with your own account and console.
+**[SmoovPlay](https://github.com/smoovplay/smoovplay)** by the SmoovPlay authors (MIT License). GreenFrame is
+an add-on for SmoovPlay and needs it installed. From SmoovPlay, GreenFrame uses:
+
+- **The frame tap:** SmoovPlay's shared-memory interface for other apps (`Local\smoovplay-tap`, read by
+  `run.py --source tap`), with the compressed-frame layout, codec header, keyframe requests and size-based
+  repeat detection that SmoovPlay designed for its chiaki-ng PS5 path. GreenFrame writes exactly what SmoovPlay's
+  reader expects.
+- **SmoovPlay's own writer class**, `framegen.chiaki_tap.FrameTap`. The bridge imports it at run time from your
+  SmoovPlay installation, so the layout always matches. It isn't copied into GreenFrame.
+- **SmoovPlay's bundled Python runtime**, which runs the bridge, and SmoovPlay's `run.py`, which GreenFrame starts.
+- **A small adapted function:** the H.264 start-code scan in `bridge/greenframe_bridge.py` is adapted from
+  `nal_units()` in SmoovPlay's `framegen/chiaki_tap.py`. Copyright (c) 2026 the SmoovPlay authors, MIT License,
+  in full in [licenses/SmoovPlay-LICENSE.txt](licenses/SmoovPlay-LICENSE.txt).
+- **Ideas:** minimising GreenFrame while SmoovPlay shows the picture follows SmoovPlay's "Minimise chiaki-ng"
+  setting, and sending the codec header as a packet of its own follows how SmoovPlay's chiaki-ng tap does it.
+
+**What SmoovPlay builds on**, credited as in SmoovPlay's own third-party notices. GreenFrame doesn't include any
+of these; they reach you through SmoovPlay:
+
+- [chiaki-ng](https://github.com/streetpea/chiaki-ng) (AGPL-3.0): the PS5 Remote Play client that SmoovPlay's
+  frame tap was first built for.
+- RIFE: model weights trained by hzwer ([Practical-RIFE](https://github.com/hzwer/Practical-RIFE), MIT), with
+  network definitions and weights published by HolyWu ([vs-rife](https://github.com/HolyWu/vs-rife), MIT). It
+  makes the in-between frames.
+- AMD FidelityFX Super Resolution 1.0 (MIT, Advanced Micro Devices, Inc.): upscaling.
+- PyTorch, NVIDIA TensorRT, FFmpeg/PyAV and the other libraries listed in SmoovPlay's `THIRD_PARTY_NOTICES.txt`.
+
+**Bundled with GreenFrame:** [Electron](https://www.electronjs.org/) (MIT) and Chromium, whose licenses ship in
+the release folder (`LICENSE`, `LICENSES.chromium.html`).
+
+**Used, not bundled:** Microsoft's Xbox Remote Play at xbox.com/play, with your own account and console.
+[FFmpeg](https://ffmpeg.org/) is used by the test script only.
+
+## License
+
+GreenFrame's own code is MIT-licensed (see [LICENSE](LICENSE)), © 2026 Nathan Pittman. The adapted SmoovPlay
+function keeps SmoovPlay's notice ([licenses/SmoovPlay-LICENSE.txt](licenses/SmoovPlay-LICENSE.txt)). See
+[NOTICE](NOTICE) for the summary.
+
+GreenFrame is an unofficial add-on. It isn't affiliated with or endorsed by the SmoovPlay authors, Microsoft or
+Xbox. Xbox is a trademark of Microsoft Corporation.
