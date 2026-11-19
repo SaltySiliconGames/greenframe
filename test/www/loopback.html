@@ -1,0 +1,25 @@
+<!doctype html><html><body><canvas id=c width=1280 height=720></canvas><video id=v autoplay muted playsinline></video>
+<script>window.__smoovKeyMode = new URLSearchParams(location.search).get("km");
+window.result = {};
+(async () => {
+  const c = document.getElementById('c'), g = c.getContext('2d');
+  let n = 0;
+  function draw(){ n++; g.fillStyle = `hsl(${n%360},70%,50%)`; g.fillRect(0,0,1280,720);
+    g.fillStyle='#fff'; g.font='120px sans-serif'; g.fillText('frame '+n, 100+ (n*7)%600, 360); requestAnimationFrame(draw); }
+  draw();
+  const stream = c.captureStream(60);
+  const ac = new AudioContext(); const osc = ac.createOscillator(); const dst = ac.createMediaStreamDestination(); osc.connect(dst); osc.start();
+  const a = new RTCPeerConnection(), b = new RTCPeerConnection();
+  a.onicecandidate = e => e.candidate && b.addIceCandidate(e.candidate);
+  b.onicecandidate = e => e.candidate && a.addIceCandidate(e.candidate);
+  b.ontrack = e => { document.getElementById('v').srcObject = new MediaStream([e.track]); window.result.track = true; };
+  b.addTransceiver('video', {direction:'recvonly'}); b.addTransceiver('audio', {direction:'recvonly'}); const dc = b.createDataChannel('input'); let dcMsgs=0; a.ondatachannel = e => e.channel.onmessage = () => dcMsgs++; dc.onopen = () => setInterval(() => dc.send('x'), 100);   // like the Xbox client: receiver offers
+  const offer = await b.createOffer(); await b.setLocalDescription(offer);
+  await a.setRemoteDescription(offer);
+  a.getTransceivers()[0].sender.replaceTrack(stream.getVideoTracks()[0]);
+  a.getTransceivers()[0].direction = 'sendonly'; a.getTransceivers()[1].sender.replaceTrack(dst.stream.getAudioTracks()[0]); a.getTransceivers()[1].direction = 'sendonly';
+  const ans = await a.createAnswer(); await a.setLocalDescription(ans); await b.setRemoteDescription(ans);
+  window.result.ok = true;
+  setInterval(async () => { const st = await b.getStats(); let v='', au=''; st.forEach(r => { if (r.type==='inbound-rtp' && r.kind==='video') v = 'video decoded '+r.framesDecoded; if (r.type==='inbound-rtp' && r.kind==='audio') au = 'audio samples '+r.totalSamplesReceived+' concealed '+r.concealedSamples; }); console.log('[GreenFrame] TEST '+v+' | '+au+' | datachannel msgs '+dcMsgs); }, 3000);
+})().catch(e => window.result.err = String(e));
+</script></body></html>

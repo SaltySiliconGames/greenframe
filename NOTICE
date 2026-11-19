@@ -1,0 +1,12 @@
+GreenFrame
+Copyright (c) 2026 Nate Pittman. MIT License (see LICENSE).
+
+GreenFrame works with SmoovPlay (https://github.com/smoovplay/smoovplay, MIT License), which must be installed
+separately. GreenFrame includes no SmoovPlay code. The bridge imports SmoovPlay's frame-tap writer
+(framegen.chiaki_tap.FrameTap) from the user's own SmoovPlay installation at run time, and writes the frame-tap
+layout SmoovPlay documents.
+
+Release builds bundle Electron (https://www.electronjs.org/, MIT License) and Chromium; their licenses ship in
+the release folder (LICENSE, LICENSES.chromium.html).
+
+Not affiliated with or endorsed by Microsoft, Xbox, or SmoovPlay. Xbox is a trademark of Microsoft Corporation.

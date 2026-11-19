@@ -1,0 +1,17 @@
+{
+  "name": "greenframe",
+  "productName": "GreenFrame",
+  "version": "0.1.0",
+  "description": "Xbox Remote Play into SmoovPlay: AI frame generation for Xbox games on your PC.",
+  "main": "main.js",
+  "license": "MIT",
+  "author": "Nate Pittman",
+  "scripts": {
+    "start": "electron .",
+    "dist:win": "electron-packager . GreenFrame --platform=win32 --arch=x64 --out=../dist --overwrite --extra-resource=../bridge --ignore=^/node_modules --ignore=^/test"
+  },
+  "devDependencies": {
+    "@electron/packager": "^19.1.1",
+    "electron": "^39.0.0"
+  }
+}
