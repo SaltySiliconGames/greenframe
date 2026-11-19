@@ -1,5 +1,5 @@
 GreenFrame
-Copyright (c) 2026 Nate Pittman. MIT License (see LICENSE).
+Copyright (c) 2026 Nathan Pittman. MIT License (see LICENSE).
 
 GreenFrame works with SmoovPlay (https://github.com/smoovplay/smoovplay, MIT License), which must be installed
 separately. GreenFrame includes no SmoovPlay code. The bridge imports SmoovPlay's frame-tap writer

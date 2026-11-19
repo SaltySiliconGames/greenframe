@@ -7,41 +7,66 @@ SmoovPlay streams a PS5 to your PC and has your graphics card add in-between fra
 every video frame straight to SmoovPlay. There's no screen capture: SmoovPlay gets the Xbox's own compressed
 video, the same way it gets the PS5's.
 
-> **Status: experimental.** The whole chain is tested with a stand-in WebRTC stream (see [Testing](#testing)),
-> not yet with a real Xbox. Please report how it goes in Issues.
+> **Status: experimental (v0.1.0).** Tested end to end with a real Xbox: an H.264 2560×1440 stream at up to
+> 60 fps reached SmoovPlay, and keyframes came back in about 180 ms whenever SmoovPlay asked for one. Frame
+> generation on a 30 fps game hasn't been confirmed on real hardware yet. Reports are welcome in
+> [Issues](../../issues).
 
 ```
-Xbox ─Remote Play (WebRTC)─▶ GreenFrame window (xbox.com/play)
-                                  │  hook: a copy of each H.264 frame, before it's decoded
+ Xbox ──Remote Play (WebRTC)──▶ GreenFrame window (xbox.com/play)
+                                  │ hook: a copy of every H.264 frame, before it's decoded
                                   ▼
-                             GreenFrame bridge ──shared memory "Local\smoovplay-tap"──▶ SmoovPlay
-                                  ▲                                                    (decode → RIFE → your screen)
-                                  └──────────── "send a keyframe" ◀────────────────────┘
+                                GreenFrame main process
+                                  │ ws://127.0.0.1:47820
+                                  ▼
+                                GreenFrame bridge ──shared memory "Local\smoovplay-tap"──▶ SmoovPlay
+                                  ▲                                            (GPU decode → RIFE → your screen)
+                                  └──────────────── "send a keyframe" ◀──────────────────────┘
 ```
 
 ## What you need
 
 - Windows 10/11 PC with a graphics card that SmoovPlay supports
 - **SmoovPlay** installed ([Releases](https://github.com/smoovplay/smoovplay/releases)), with its setup finished
-- An Xbox Series X|S or Xbox One with remote play turned on: **Settings → Devices & connections → Remote
-  features → Enable remote features**, and power mode set to **Sleep**
+- An Xbox Series X|S or Xbox One with remote play on. On the console: **Settings → Devices & connections →
+  Remote features → Enable remote features**, and set power mode to **Sleep**.
 - A controller connected to the PC
 - Wired Ethernet for the Xbox and the PC, if you can
 
 ## Install
 
-1. Download `GreenFrame-win32-x64.zip` from [Releases](../../releases) and unzip it anywhere.
-2. Run **GreenFrame.exe**.
+1. Download `GreenFrame-0.1.0-win64.zip` from [Releases](../../releases) and **unzip it** to a folder of your own.
+   Don't run it from inside the zip.
+2. Run **GreenFrame.exe**. Release builds are code-signed (publisher: Nathan Pittman, via Microsoft Artifact
+   Signing).
 
 ## Use
 
-1. GreenFrame opens Xbox Remote Play and starts SmoovPlay in the background.
-2. Sign in with your Microsoft account (the first time only), pick your console and start remote play.
-3. SmoovPlay's window opens over GreenFrame's with the smoothed picture. Press **M** in it for its settings and
-   **F** for full screen. GreenFrame keeps streaming, playing sound and reading your controller behind it.
+1. GreenFrame opens Xbox Remote Play and starts SmoovPlay in the background, waiting for frames.
+2. Sign in with your Microsoft account (first time only). Open the menu at the top-left of the page, choose
+   **Remote play**, pick your console and **Connect**.
+3. When the stream starts, SmoovPlay opens its window with the picture and GreenFrame minimises itself. It keeps
+   streaming, playing sound and reading your controller while minimised. When you close SmoovPlay, GreenFrame
+   comes back.
 
-GreenFrame's menu has: **Start / Stop SmoovPlay** (Ctrl+Shift+S), **Restart bridge**, **Open logs folder**,
-**Open settings**, and full screen (F11).
+The first time SmoovPlay sees a new stream resolution (the Xbox may send 1440p), it spends about a minute
+optimising its AI model for it. It only does that once per resolution.
+
+In SmoovPlay's window: **S** stats overlay, **I** frame generation on/off (an instant A/B comparison), **F** full
+screen, **M** settings.
+
+**Frame generation only fills gaps.** On a game, or a menu like the Xbox home screen, that already runs at 60 fps,
+SmoovPlay passes the frames through and says so. Try a 30 fps game, or a game's Quality/Fidelity mode.
+
+### GreenFrame's menu
+
+| | |
+|---|---|
+| Back to Xbox Remote Play | reload xbox.com/play |
+| Start / Stop SmoovPlay | Ctrl+Shift+S starts SmoovPlay again after you've closed it |
+| Restart bridge | if the log says the bridge stopped |
+| Minimise GreenFrame while SmoovPlay is showing | on by default; turn off to keep GreenFrame open behind SmoovPlay |
+| Open logs folder / Open settings | `%APPDATA%\GreenFrame` |
 
 ### Settings
 
@@ -52,9 +77,10 @@ GreenFrame's menu has: **Start / Stop SmoovPlay** (Ctrl+Shift+S), **Restart brid
 | `smoovplayDir` | where SmoovPlay is installed (default `%LOCALAPPDATA%\Programs\SmoovPlay`) |
 | `startSmoovPlay` | start SmoovPlay with GreenFrame (default `true`) |
 | `smoovplayArgs` | extra flags for SmoovPlay's `run.py --source tap`, e.g. `["--display", "--hz", "120"]` |
+| `minimiseWhilePlaying` | minimise GreenFrame while SmoovPlay shows the picture (default `true`) |
 | `port` | the bridge's local port (default 47820) |
 
-SmoovPlay's own settings (frame rate, upscaler, AI engine) are the ones you saved in SmoovPlay.
+SmoovPlay's own settings (frame rate, upscaler, AI engine, full screen) are the ones you choose in its **M** menu.
 
 ## Good to know
 
@@ -62,51 +88,59 @@ SmoovPlay's own settings (frame rate, upscaler, AI engine) are the ones you save
   That's fine for slower games and noticeable for fast shooters.
 - **Set your monitor to its full refresh rate** in Windows (Settings → System → Display → Advanced display), or
   SmoovPlay can't show more than 60 fps.
-- The stream has to be **H.264**. GreenFrame asks for it, and it's what Xbox Remote Play in the browser uses. If the
-  log says another codec, open an issue.
-- When SmoovPlay joins a stream already in progress, it asks for a keyframe. GreenFrame gets one by handing the
-  hidden player one deliberately broken frame. That makes the player ask the Xbox for a fresh keyframe, which
-  arrives within about 50 ms in testing. The hidden player may smear for a moment; SmoovPlay's picture doesn't.
+- **The stream has to be H.264.** GreenFrame asks for it, and it's what the Xbox sent in testing. If `bridge.log`
+  mentions another codec, open an issue.
+- SmoovPlay's delay test (**L**) doesn't work with GreenFrame yet. It needs to press a controller button on the
+  console.
 
 ## Troubleshooting
 
 Open **GreenFrame → Open logs folder**:
 
-- `bridge.log` should show `browser connected`, then `stream live in SmoovPlay: H.264 1920x1080`.
-- `smoovplay.log` is SmoovPlay's own output.
-- `page.log` has GreenFrame's messages from the player page.
+- `bridge.log`: a working stream shows `browser connected (GreenFrame app)`, then
+  `stream live in SmoovPlay: H.264 2560x1440`, and `keyframe arrived … ms after the request` lines.
+- `smoovplay.log`: SmoovPlay's own output, such as `[run] playing` and the frame rate it measures.
+- `page.log`: GreenFrame's messages from the player page.
 
 | Problem | Try |
 |---|---|
 | "SmoovPlay wasn't found" | install SmoovPlay, or set `smoovplayDir` |
-| `bridge.log` never says `browser connected` | start remote play; check nothing else uses port 47820 |
+| `bridge.log` never says `browser connected` | make sure remote play is connected (your console's home screen is showing); check nothing else uses port 47820 |
 | Connected, but never `stream live` | the stream isn't H.264 (see `bridge.log`), or no keyframe yet: reconnect remote play |
-| Controller stops working behind SmoovPlay | click GreenFrame's window once so it has focus, then go back to SmoovPlay |
+| SmoovPlay doesn't open for a minute | first time at this resolution: it's optimising (see `smoovplay.log`) |
+| Controller stops when GreenFrame minimises | untick *Minimise GreenFrame while SmoovPlay is showing* and open an issue |
+| Picture stutters, frame rate jumps around | wire the Xbox and the PC with Ethernet |
+
+## How it works
+
+| | |
+|---|---|
+| `app/hook/inject.js` | Runs in the xbox.com page before the page's own scripts. It wraps `RTCPeerConnection` and pipes the stream through WebRTC encoded streams (`createEncodedStreams`), copying each H.264 frame before the player decodes it. Sound, controller input and the player itself pass through unchanged. It prefers H.264 when the stream is set up. It also tells the page it's visible and focused, so remote play keeps going while GreenFrame is minimised. |
+| `app/hook/relay.js`, `app/preload.js` | The preload puts the hook into the page. The relay passes frames to the main process over Electron IPC. The page can't connect to the bridge itself, because xbox.com's Content Security Policy (`connect-src`) blocks `ws://127.0.0.1`. |
+| `app/bridge-link.js` | Main process: one WebSocket per video stream to the bridge, with retries. It passes SmoovPlay's keyframe requests back to the page. |
+| `app/main.js` | The window and Microsoft sign-in. It starts and stops the bridge and SmoovPlay with SmoovPlay's bundled Python. It watches SmoovPlay's output for `[run] playing` to minimise itself and restores when SmoovPlay exits. |
+| `bridge/greenframe_bridge.py` | Runs on SmoovPlay's Python and writes frames into SmoovPlay's frame tap (`Local\smoovplay-tap`, the compressed layout chiaki-ng uses for the PS5), using SmoovPlay's own writer class. SmoovPlay then treats the Xbox like a PS5: GPU decode, and repeated frames told apart by their size. The codec header goes first, as a packet of its own. The size comes from the stream's SPS, and a resolution change restarts the session. |
+
+**Keyframes.** SmoovPlay needs a keyframe to start decoding, and asks for one when it joins a stream or falls
+behind. There's no API for a WebRTC receiver to ask for one directly. The hook hands the hidden player one
+deliberately broken frame; the player's decoder fails and asks the Xbox for a fresh keyframe itself. That took
+about 180 ms on a real Xbox, against about 3 s for simply dropping frames. Until the keyframe arrives, the bridge
+keeps back frames SmoovPlay couldn't decode.
+
+**Why encoded streams and not `RTCRtpScriptTransform`:** in Chrome 153 the script transform exists, but received
+frames bypass it (tested). The hook uses it only in browsers without encoded streams.
 
 ## Backup: browser extension
 
-If you'd rather use Edge or Chrome, `dist/extension` (built by `scripts/build-extension.sh`) has the same hook as
-an unpacked extension. Load it from `edge://extensions` (Developer mode → Load unpacked) and run the bridge with
-SmoovPlay's Python:
+`scripts/build-extension.sh` builds the same hook as an unpacked extension for Edge or Chrome (`dist/extension`).
+Load it from `edge://extensions` (Developer mode → Load unpacked) and run the bridge and SmoovPlay yourself:
 
 ```powershell
 & "$env:LOCALAPPDATA\Programs\SmoovPlay\runtime\python\python.exe" bridge\greenframe_bridge.py
 & "$env:LOCALAPPDATA\Programs\SmoovPlay\runtime\python\python.exe" "$env:LOCALAPPDATA\Programs\SmoovPlay\app\run.py" --source tap --display
 ```
 
-The browser may slow down a stream that's covered by another window. The GreenFrame app turns that off.
-
-## How it works
-
-| | |
-|---|---|
-| `app/hook/inject.js` | runs in the page before its own scripts. It wraps `RTCPeerConnection` and uses WebRTC encoded streams (`createEncodedStreams`) to copy each H.264 frame before the player decodes it. Sound, input and the player itself pass through unchanged. It prefers H.264 when the stream is set up. |
-| `app/hook/relay.js` | GreenFrame's side of the page. It sends frames to the bridge over a local WebSocket, and keyframe requests back to the page. |
-| `app/main.js`, `app/preload.js` | the Electron app: the window, Microsoft sign-in, starting and stopping the bridge and SmoovPlay, and keeping a covered window running |
-| `bridge/greenframe_bridge.py` | runs on SmoovPlay's bundled Python. It writes frames into SmoovPlay's [frame tap](https://github.com/smoovplay/smoovplay) (`Local\smoovplay-tap`, the compressed layout chiaki-ng uses), with SmoovPlay's own writer class, so SmoovPlay treats the Xbox like a PS5: GPU decode, and repeated frames told apart by their size. The codec header goes in first as a packet of its own. When SmoovPlay asks for a keyframe, the bridge withholds frames it couldn't decode until the keyframe arrives. |
-
-Chrome 153 has `RTCRtpScriptTransform`, but frames bypass it on the receiving side (tested), so encoded streams
-are the main path and the worker transform is only a fallback.
+The extension hasn't been tested on xbox.com yet. The app is the supported way.
 
 ## Building
 
@@ -118,18 +152,29 @@ npm run dist:win     # dist/GreenFrame-win32-x64 (works from Linux too)
 ../scripts/build-extension.sh
 ```
 
+To sign a Windows build, sign every `.exe` and `.dll` in `dist/GreenFrame-win32-x64` that doesn't already carry a
+valid signature, using `signtool` with your own certificate (or Microsoft Artifact Signing's dlib), then zip it.
+Only the binaries are signed; the app's JavaScript under `resources\app` can change without re-signing.
+
 ## Testing
 
-`test/run-app.sh` runs the whole chain without an Xbox. A local page streams video, sound and a data channel over
-WebRTC loopback. GreenFrame hooks it like xbox.com, and a stand-in bridge saves the H.264, asking for a keyframe
-every 3 s. ffmpeg then checks every frame decodes. Latest run: 1116 frames, 0 decode errors, keyframes back in
-27–39 ms, sound and data channel unaffected.
+`test/run-app.sh` runs the whole chain without an Xbox:
+
+- A local page streams video, sound and a data channel over WebRTC loopback. It carries a `connect-src` policy
+  like xbox.com's.
+- GreenFrame hooks it as it would xbox.com, and hides its window partway through, the way it minimises for
+  SmoovPlay.
+- A stand-in bridge saves the H.264 it receives and asks for a keyframe every 3 s.
+- The test checks that every frame decodes with ffmpeg, that frames keep flowing while hidden, that the sound and
+  data channel are unaffected, and that the page never sees the focus loss.
+
+Latest run: 945 frames, 0 decode errors, keyframes in 41–50 ms.
 
 ## Credits and license
 
-GreenFrame is MIT-licensed (see [LICENSE](LICENSE)). It sends frames to **SmoovPlay** by the SmoovPlay
-developers (MIT), through SmoovPlay's frame tap, and needs SmoovPlay installed. It includes no SmoovPlay code;
-see [NOTICE](NOTICE). Built on [Electron](https://www.electronjs.org/) (MIT).
+GreenFrame is MIT-licensed (see [LICENSE](LICENSE)), © 2026 Nathan Pittman. It sends frames to **SmoovPlay** by
+the SmoovPlay developers (MIT), through SmoovPlay's frame tap, and needs SmoovPlay installed. It includes no
+SmoovPlay code; see [NOTICE](NOTICE). Built on [Electron](https://www.electronjs.org/) (MIT).
 
 GreenFrame isn't affiliated with or endorsed by Microsoft, Xbox or SmoovPlay. Xbox is a trademark of Microsoft.
 It uses Xbox Remote Play as Microsoft offers it at xbox.com/play, with your own account and console.
