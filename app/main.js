@@ -25,7 +25,7 @@ const userData = app.getPath('userData');
 const logDir = path.join(userData, 'logs');
 const configPath = path.join(userData, 'config.json');
 const DEFAULT_CONFIG = {
-  smoovplayDir: path.join(process.env.LOCALAPPDATA || '', 'Programs', 'SmoovPlay'),
+  smoovplayDir: '',               // blank: found automatically (SmoovPlay's Apps & features entry, else the default folder)
   startSmoovPlay: true,          // start SmoovPlay with GreenFrame
   smoovplayArgs: ['--display'],  // added to run.py --source tap
   minimiseWhilePlaying: true,    // minimise GreenFrame while SmoovPlay shows the picture
@@ -45,11 +45,54 @@ const config = loadConfig();
 function saveConfig() {
   try { fs.writeFileSync(configPath, JSON.stringify(config, null, 2)); } catch (e) { /* best-effort */ }
 }
+// Where SmoovPlay is: the folder set in config.json if it holds SmoovPlay, else the one SmoovPlay's setup recorded
+// for Apps & features (any folder since SmoovPlay 0.3.10), else the default install folder.
+const UNINSTALL_KEY = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\SmoovPlay';
+function regValue(name) {
+  if (process.platform !== 'win32') return '';
+  try {
+    const out = require('child_process').execFileSync('reg', ['query', UNINSTALL_KEY, '/v', name],
+      { encoding: 'utf8', windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] });
+    const m = out.match(new RegExp(`${name}\\s+REG_\\w+\\s+(.+)`));
+    return m ? m[1].trim() : '';
+  } catch (e) { return ''; }
+}
+const isSmoovPlay = (dir) => !!dir && fs.existsSync(path.join(dir, 'runtime', 'python', 'python.exe'))
+  && fs.existsSync(path.join(dir, 'app', 'framegen', 'tap.py'));
+function findSmoovPlay() {
+  const candidates = [config.smoovplayDir, regValue('InstallLocation'),
+    path.join(process.env.LOCALAPPDATA || '', 'Programs', 'SmoovPlay')];
+  return candidates.find(isSmoovPlay) || candidates.find(Boolean) || '';
+}
+const smoovplayDir = findSmoovPlay();
 const smoovplay = {
-  dir: config.smoovplayDir,
-  python: process.env.GREENFRAME_PYTHON || path.join(config.smoovplayDir, 'runtime', 'python', 'python.exe'),
-  app: path.join(config.smoovplayDir, 'app'),
+  dir: smoovplayDir,
+  version: regValue('DisplayVersion'),
+  python: process.env.GREENFRAME_PYTHON || path.join(smoovplayDir, 'runtime', 'python', 'python.exe'),
+  app: path.join(smoovplayDir, 'app'),
 };
+
+// SmoovPlay 0.3.4 tells a 30 fps game's new frames from repeats by the picture on compressed streams like
+// GreenFrame's; before that, by frame size, which misread Xbox streams often. Say so once per old version.
+function olderThan(v, want) {
+  const a = String(v).split('.').map(Number), b = want.split('.').map(Number);
+  for (let i = 0; i < b.length; i++) { if ((a[i] || 0) !== b[i]) return (a[i] || 0) < b[i]; }
+  return false;
+}
+function checkSmoovPlayVersion() {
+  if (!smoovplay.version || !olderThan(smoovplay.version, '0.3.4') || config.warnedOldSmoovPlay === smoovplay.version) {
+    return;
+  }
+  config.warnedOldSmoovPlay = smoovplay.version;
+  saveConfig();
+  const r = dialog.showMessageBoxSync({
+    type: 'info', title: 'GreenFrame', buttons: ['Open SmoovPlay releases', 'Later'], defaultId: 0, cancelId: 1,
+    message: `SmoovPlay ${smoovplay.version} is installed; 0.3.4 or newer works better with Xbox`,
+    detail: 'Newer SmoovPlay tells a 30 fps game\'s new frames from repeats by the picture, which reads Xbox ' +
+      'Remote Play streams far more reliably. Update SmoovPlay from its Releases page (your settings are kept).',
+  });
+  if (r === 0) shell.openExternal('https://github.com/smoovplay/smoovplay/releases');
+}
 const bridgeScript = app.isPackaged
   ? path.join(process.resourcesPath, 'bridge', 'greenframe_bridge.py')
   : path.join(__dirname, '..', 'bridge', 'greenframe_bridge.py');
@@ -225,11 +268,14 @@ if (!app.requestSingleInstanceLock()) {
         type: 'warning', title: 'GreenFrame',
         message: "SmoovPlay wasn't found",
         detail: `GreenFrame needs SmoovPlay (github.com/smoovplay/smoovplay) installed, with its frame tap.\n\n` +
-          `Looked in: ${smoovplay.dir}\n\nIf it's somewhere else, set "smoovplayDir" in ${configPath} and restart.`,
+          `Looked in: ${smoovplay.dir || 'its Apps & features entry and the default folder'}\n\n` +
+          `If it's somewhere else, set "smoovplayDir" in ${configPath} and restart.`,
       });
     } else {
+      log('page', `[GreenFrame] SmoovPlay ${smoovplay.version || '(version unknown)'} in ${smoovplay.dir}`);
       startBridge();
       if (config.startSmoovPlay) startSmoovPlay();
+      checkSmoovPlayVersion();
     }
     createWindow();
   });

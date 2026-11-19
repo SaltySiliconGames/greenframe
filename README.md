@@ -38,7 +38,8 @@ See [Credits](#credits) for everything GreenFrame uses.
 ## What you need
 
 - Windows 10/11 PC with a graphics card that SmoovPlay supports
-- **SmoovPlay** installed ([Releases](https://github.com/smoovplay/smoovplay/releases)), with its setup finished
+- **SmoovPlay 0.3.4 or newer** installed ([Releases](https://github.com/smoovplay/smoovplay/releases)), with its setup
+  finished. Older versions work, but read 30 fps Xbox games less reliably; GreenFrame says so when it starts.
 - An Xbox Series X|S or Xbox One with remote play on. On the console: **Settings → Devices & connections →
   Remote features → Enable remote features**, and set power mode to **Sleep**.
 - A controller connected to the PC
@@ -85,7 +86,7 @@ SmoovPlay passes the frames through and says so. Try a 30 fps game, or a game's 
 
 | | |
 |---|---|
-| `smoovplayDir` | where SmoovPlay is installed (default `%LOCALAPPDATA%\Programs\SmoovPlay`) |
+| `smoovplayDir` | where SmoovPlay is installed. Leave blank: GreenFrame finds it through SmoovPlay's Apps & features entry (any folder), else `%LOCALAPPDATA%\Programs\SmoovPlay` |
 | `startSmoovPlay` | start SmoovPlay with GreenFrame (default `true`) |
 | `smoovplayArgs` | extra flags for SmoovPlay's `run.py --source tap`, e.g. `["--display", "--hz", "120"]` |
 | `minimiseWhilePlaying` | minimise GreenFrame while SmoovPlay shows the picture (default `true`) |
@@ -97,6 +98,10 @@ SmoovPlay's own settings (frame rate, upscaler, AI engine, full screen) are the 
 
 - **It adds delay.** Frame generation holds each real frame back until the next one arrives, as in SmoovPlay.
   That's fine for slower games and noticeable for fast shooters.
+- **Most Xbox games already run near 60 fps.** Frame generation only helps a game running at 30. If SmoovPlay says
+  *"Game at 60 fps: no gaps to fill"*, switch the game to its Quality/Fidelity mode, or turn frame generation off with
+  **I** to skip its delay.
+- **On an ultrawide**, SmoovPlay 0.3.7+ has *Fill the screen* (Fit, Zoom, Stretch or Panorama) in its settings.
 - **Set your monitor to its full refresh rate** in Windows (Settings → System → Display → Advanced display), or
   SmoovPlay can't show more than 60 fps.
 - **The stream has to be H.264.** GreenFrame asks for it, and it's what the Xbox sent in testing. If `bridge.log`
@@ -118,7 +123,8 @@ Open **GreenFrame → Open logs folder**:
 | "SmoovPlay wasn't found" | install SmoovPlay, or set `smoovplayDir` |
 | `bridge.log` never says `browser connected` | make sure remote play is connected (your console's home screen is showing); check nothing else uses port 47820 |
 | Connected, but never `stream live` | the stream isn't H.264 (see `bridge.log`), or no keyframe yet: reconnect remote play |
-| SmoovPlay doesn't open for a minute | first time at this resolution: it's optimising (see `smoovplay.log`) |
+| SmoovPlay doesn't open for a minute | first time at this resolution or setting: it's optimising (see `smoovplay.log`). Don't close GreenFrame meanwhile, or it starts over |
+| Faint flicker on an OLED or VA monitor | G-Sync/FreeSync flicker as the frame rate varies: in NVIDIA Control Panel, give SmoovPlay's `runtime\python\python.exe` *Monitor Technology: Fixed Refresh* and *Vertical sync: On* |
 | Controller stops when GreenFrame minimises | untick *Minimise GreenFrame while SmoovPlay is showing* and open an issue |
 | Picture stutters, frame rate jumps around | wire the Xbox and the PC with Ethernet |
 
