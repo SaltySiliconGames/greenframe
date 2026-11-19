@@ -1,5 +1,6 @@
 GreenFrame
 Copyright (c) 2026 Nathan Pittman. MIT License (see LICENSE).
+Built with Claude (https://claude.ai), Anthropic's AI.
 
 GreenFrame is an unofficial add-on for SmoovPlay (https://github.com/smoovplay/smoovplay), Copyright (c) 2026 the
 SmoovPlay authors, MIT License. SmoovPlay must be installed separately; it does all of the decoding, frame

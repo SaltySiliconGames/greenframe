@@ -215,6 +215,9 @@ of these; they reach you through SmoovPlay:
 **Bundled with GreenFrame:** [Electron](https://www.electronjs.org/) (MIT) and Chromium, whose licenses ship in
 the release folder (`LICENSE`, `LICENSES.chromium.html`).
 
+**Built with Claude:** GreenFrame was designed, written and tested by Nathan Pittman working with
+[Claude](https://claude.ai), Anthropic's AI. Commits Claude wrote carry a `Co-Authored-By: Claude` line.
+
 **Used, not bundled:** Microsoft's Xbox Remote Play at xbox.com/play, with your own account and console.
 [FFmpeg](https://ffmpeg.org/) is used by the test script only.
 
