@@ -1,6 +1,8 @@
 <!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="connect-src 'self' ws://127.0.0.1:8088"></head><body><canvas id=c width=1280 height=720></canvas><video id=v autoplay muted playsinline></video>
 <script>window.__smoovKeyMode = new URLSearchParams(location.search).get("km");
 window.result = {};
+let blurSeen = 0; window.addEventListener('blur', () => blurSeen++); document.addEventListener('visibilitychange', () => blurSeen++);
+setTimeout(() => { window.dispatchEvent(new Event('blur')); document.dispatchEvent(new Event('visibilitychange')); }, 6000);
 (async () => {
   const c = document.getElementById('c'), g = c.getContext('2d');
   let n = 0;
@@ -20,6 +22,6 @@ window.result = {};
   a.getTransceivers()[0].direction = 'sendonly'; a.getTransceivers()[1].sender.replaceTrack(dst.stream.getAudioTracks()[0]); a.getTransceivers()[1].direction = 'sendonly';
   const ans = await a.createAnswer(); await a.setLocalDescription(ans); await b.setRemoteDescription(ans);
   window.result.ok = true;
-  setInterval(async () => { const st = await b.getStats(); let v='', au=''; st.forEach(r => { if (r.type==='inbound-rtp' && r.kind==='video') v = 'video decoded '+r.framesDecoded; if (r.type==='inbound-rtp' && r.kind==='audio') au = 'audio samples '+r.totalSamplesReceived+' concealed '+r.concealedSamples; }); console.log('[GreenFrame] TEST '+v+' | '+au+' | datachannel msgs '+dcMsgs); }, 3000);
+  setInterval(async () => { const st = await b.getStats(); let v='', au=''; st.forEach(r => { if (r.type==='inbound-rtp' && r.kind==='video') v = 'video decoded '+r.framesDecoded; if (r.type==='inbound-rtp' && r.kind==='audio') au = 'audio samples '+r.totalSamplesReceived+' concealed '+r.concealedSamples; }); console.log('[GreenFrame] TEST '+v+' | '+au+' | datachannel msgs '+dcMsgs+' | page saw focus loss: '+blurSeen+' | visibility '+document.visibilityState+' hasFocus '+document.hasFocus()); }, 3000);
 })().catch(e => window.result.err = String(e));
 </script></body></html>

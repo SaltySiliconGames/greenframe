@@ -19,6 +19,20 @@ function greenframeHook() {
   const NativePC = window.RTCPeerConnection;
   if (!NativePC) return;
 
+  // Keep the player playing while SmoovPlay's window is in front and GreenFrame is minimised: xbox.com pauses and
+  // stops taking input when its window loses focus ("Click or tap here to continue playing"). The page is told it
+  // still has focus and is visible; real focus changes inside the page are left alone.
+  try {
+    const D = Document.prototype;
+    Object.defineProperty(D, 'hidden', { configurable: true, get: () => false });
+    Object.defineProperty(D, 'visibilityState', { configurable: true, get: () => 'visible' });
+    D.hasFocus = function () { return true; };
+    const swallow = (e) => { if (e.target === window || e.target === document) e.stopImmediatePropagation(); };
+    for (const t of ['blur', 'visibilitychange', 'webkitvisibilitychange', 'pagehide', 'freeze']) {
+      window.addEventListener(t, swallow, true);
+    }
+  } catch (e) { /* leave the page as it is */ }
+
   const post = (msg, transfer) => window.postMessage(Object.assign({ __greenframe: 'page' }, msg), '*', transfer || []);
 
   // One handler per video stream: copies frames out, drops frames on request so the browser's own decoder asks the

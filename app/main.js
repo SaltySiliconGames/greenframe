@@ -28,6 +28,7 @@ const DEFAULT_CONFIG = {
   smoovplayDir: path.join(process.env.LOCALAPPDATA || '', 'Programs', 'SmoovPlay'),
   startSmoovPlay: true,          // start SmoovPlay with GreenFrame
   smoovplayArgs: ['--display'],  // added to run.py --source tap
+  minimiseWhilePlaying: true,    // minimise GreenFrame while SmoovPlay shows the picture
   port: 47820,
 };
 
@@ -41,6 +42,9 @@ function loadConfig() {
   }
 }
 const config = loadConfig();
+function saveConfig() {
+  try { fs.writeFileSync(configPath, JSON.stringify(config, null, 2)); } catch (e) { /* best-effort */ }
+}
 const smoovplay = {
   dir: config.smoovplayDir,
   python: process.env.GREENFRAME_PYTHON || path.join(config.smoovplayDir, 'runtime', 'python', 'python.exe'),
@@ -54,17 +58,30 @@ const bridgeScript = app.isPackaged
 
 const children = {};
 
-function startChild(name, args, cwd) {
+// Starts a Python child, logging its output to logs/<name>.log; onLine (optional) sees each line of it.
+function startChild(name, args, cwd, onLine, onExit) {
   stopChild(name);
   fs.mkdirSync(logDir, { recursive: true });
   const out = fs.openSync(path.join(logDir, `${name}.log`), 'a');
   fs.writeSync(out, `\n===== ${new Date().toISOString()} ${smoovplay.python} ${args.join(' ')}\n`);
   const p = spawn(smoovplay.python, ['-u', ...args], {
-    cwd, windowsHide: true, stdio: ['ignore', out, out],
+    cwd, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'],
     env: Object.assign({}, process.env, { PYTHONUNBUFFERED: '1' }),
   });
+  let partial = '';
+  const take = (chunk) => {
+    try { fs.writeSync(out, chunk); } catch (e) { /* log is best-effort */ }
+    if (!onLine) return;
+    const lines = (partial + chunk.toString('utf8')).split(/\r?\n/);
+    partial = lines.pop();
+    for (const l of lines) onLine(l);
+  };
+  p.stdout.on('data', take);
+  p.stderr.on('data', take);
   p.on('exit', (code) => {
+    try { fs.closeSync(out); } catch (e) { /* already closed */ }
     if (children[name] === p) delete children[name];
+    if (onExit) onExit(code);
     updateMenu();
     if (name === 'bridge' && !quitting) {
       dialog.showErrorBox('GreenFrame', `The bridge stopped (code ${code}). See ${path.join(logDir, 'bridge.log')}.`);
@@ -89,9 +106,26 @@ function startBridge() {
   startChild('bridge', [bridgeScript, '--port', String(config.port), ...extra], path.dirname(bridgeScript));
 }
 
+// While SmoovPlay shows the picture, GreenFrame gets out of the way (like SmoovPlay's "Minimise chiaki-ng" for the
+// PS5): minimised, still streaming, playing sound and reading the controller. Back when SmoovPlay closes.
 function startSmoovPlay() {
   startChild('smoovplay', [path.join(smoovplay.app, 'run.py'), '--source', 'tap', ...config.smoovplayArgs],
-    smoovplay.app);
+    smoovplay.app,
+    (line) => { if (/^\[run\] playing\b/.test(line)) smoovplayShowing(true); },
+    () => smoovplayShowing(false));
+}
+
+let minimisedForSmoovPlay = false;
+function smoovplayShowing(on) {
+  if (!win) return;
+  if (on && config.minimiseWhilePlaying && !win.isMinimized()) {
+    log('page', '[GreenFrame] SmoovPlay is showing the picture: minimising GreenFrame');
+    minimisedForSmoovPlay = true;
+    win.minimize();
+  } else if (!on && minimisedForSmoovPlay) {
+    minimisedForSmoovPlay = false;
+    if (!quitting) win.restore();
+  }
 }
 
 // ------------------------------------------------------------ the window
@@ -133,6 +167,10 @@ function createWindow() {
     if (String(message).includes('[GreenFrame]')) log('page', message);
   });
   win.loadURL(PLAY_URL);
+  if (process.env.GREENFRAME_TEST_MINIMISE_AT) { // testing: what SmoovPlay's "playing" does, a few seconds in
+    setTimeout(() => { minimisedForSmoovPlay = true; win.minimize(); win.hide(); log('page', '[GreenFrame] TEST hidden'); },
+      1000 * Number(process.env.GREENFRAME_TEST_MINIMISE_AT));
+  }
   win.on('closed', () => { win = null; });
 }
 
@@ -155,6 +193,8 @@ function updateMenu() {
         { label: `Start SmoovPlay${running('smoovplay')}`, accelerator: 'Ctrl+Shift+S', click: startSmoovPlay },
         { label: 'Stop SmoovPlay', enabled: !!children.smoovplay, click: () => stopChild('smoovplay') },
         { label: `Restart bridge${running('bridge')}`, click: startBridge },
+        { label: 'Minimise GreenFrame while SmoovPlay is showing', type: 'checkbox', checked: !!config.minimiseWhilePlaying,
+          click: (item) => { config.minimiseWhilePlaying = item.checked; saveConfig(); } },
         { type: 'separator' },
         { label: 'Open logs folder', click: () => shell.openPath(logDir) },
         { label: 'Open settings (config.json)', click: () => shell.openPath(configPath) },
