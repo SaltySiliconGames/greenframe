@@ -9,6 +9,7 @@ const { app, BrowserWindow, Menu, shell, dialog, session } = require('electron')
 const path = require('path');
 const fs = require('fs');
 const { spawn, execFile } = require('child_process');
+const bridgeLink = require('./bridge-link');
 
 // Keep the stream, sound and controller running while SmoovPlay's window covers this one.
 app.commandLine.appendSwitch('disable-renderer-backgrounding');
@@ -176,6 +177,7 @@ if (!app.requestSingleInstanceLock()) {
   app.on('second-instance', () => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } });
   app.whenReady().then(() => {
     updateMenu();
+    bridgeLink.setup(config.port, (msg) => log('page', `[GreenFrame] ${msg}`));
     if (process.env.GREENFRAME_PYTHON) {
       startBridge(); // testing: no SmoovPlay
     } else if (!fs.existsSync(smoovplay.python) || !fs.existsSync(path.join(smoovplay.app, 'framegen', 'tap.py'))) {

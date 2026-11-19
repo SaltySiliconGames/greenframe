@@ -97,12 +97,15 @@ onrtctransform = (e) => {
   const t = e.transformer;
   const s = { t, handler: makeHandler(send) };
   live.add(s);
-  send({ type: 'begin', codec: 'h264', mode: 'transform' });
+  let begun = false;
   t.readable
-    .pipeThrough(new TransformStream({ transform: (f, c) => s.handler.onFrame(f, c) }))
+    .pipeThrough(new TransformStream({ transform: (f, c) => {
+      if (!begun) { begun = true; send({ type: 'begin', codec: 'h264', mode: 'transform' }); }
+      s.handler.onFrame(f, c);
+    } }))
     .pipeTo(t.writable)
     .catch(() => {})
-    .finally(() => { live.delete(s); send({ type: 'end' }); });
+    .finally(() => { live.delete(s); if (begun) send({ type: 'end' }); });
 };
 send({ type: 'ready' });
 `;
@@ -154,12 +157,15 @@ send({ type: 'ready' });
     try { streams = receiver.createEncodedStreams(); } catch (e) { console.warn(TAG, e); return; }
     const handler = makeHandler(post);
     legacyHandlers.add(handler);
-    post({ type: 'begin', codec: 'h264', mode: 'encoded-streams' });
+    let begun = false; // announced at the first frame: a receiver that never gets video (a send-only slot) stays quiet
     streams.readable
-      .pipeThrough(new TransformStream({ transform: (f, c) => handler.onFrame(f, c) }))
+      .pipeThrough(new TransformStream({ transform: (f, c) => {
+        if (!begun) { begun = true; post({ type: 'begin', codec: 'h264', mode: 'encoded-streams' }); }
+        handler.onFrame(f, c);
+      } }))
       .pipeTo(streams.writable)
       .catch(() => {})
-      .finally(() => { legacyHandlers.delete(handler); post({ type: 'end' }); });
+      .finally(() => { legacyHandlers.delete(handler); if (begun) post({ type: 'end' }); });
   }
 
   function sweep(pc) {

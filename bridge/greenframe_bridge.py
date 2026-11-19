@@ -264,7 +264,9 @@ class WS:
                          b"GreenFrame bridge running\n")
             await writer.drain()
             return None
-        if not origin.startswith(ALLOWED_ORIGINS + EXTRA_ORIGINS):
+        # A browser always sends Origin, so the check keeps other websites out. GreenFrame's app connects from its
+        # main process, which sends none.
+        if origin and not origin.startswith(ALLOWED_ORIGINS + EXTRA_ORIGINS):
             log(f"refused a connection from origin {origin!r}")
             writer.write(b"HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\n\r\n")
             await writer.drain()
@@ -357,7 +359,7 @@ class Bridge:
             writer.close()
             return
         ws, origin = acc
-        log(f"browser connected ({origin})")
+        log(f"browser connected ({origin or 'GreenFrame app'})")
         try:
             while True:
                 msg = await ws.recv()
