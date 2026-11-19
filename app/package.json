@@ -8,7 +8,7 @@
   "author": "Nate Pittman",
   "scripts": {
     "start": "electron .",
-    "dist:win": "electron-packager . GreenFrame --platform=win32 --arch=x64 --out=../dist --overwrite --extra-resource=../bridge --ignore=^/node_modules --ignore=^/test"
+    "dist:win": "electron-packager . GreenFrame --platform=win32 --arch=x64 --out=../dist --overwrite --no-asar --extra-resource=../bridge --ignore=^/node_modules --ignore=^/test"
   },
   "devDependencies": {
     "@electron/packager": "^19.1.1",
