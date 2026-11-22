@@ -15,7 +15,9 @@ const bridgeLink = require('./bridge-link');
 app.commandLine.appendSwitch('disable-renderer-backgrounding');
 app.commandLine.appendSwitch('disable-background-timer-throttling');
 app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
-app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
+// Chromium reads Xbox controllers through Windows.Gaming.Input, which gives input only to the foreground app, so the
+// controller went dead once SmoovPlay's window took focus. Its XInput reader works in the background.
+app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion,EnableWindowsGamingInputDataFetcher');
 
 const PLAY_URL = process.env.GREENFRAME_URL || 'https://www.xbox.com/play'; // override: testing
 const PARTITION = 'persist:greenframe';
