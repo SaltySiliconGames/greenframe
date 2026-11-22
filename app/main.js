@@ -151,8 +151,20 @@ function startBridge() {
 
 // While SmoovPlay shows the picture, GreenFrame gets out of the way (like SmoovPlay's "Minimise chiaki-ng" for the
 // PS5): minimised, still streaming, playing sound and reading the controller. Back when SmoovPlay closes.
+// Streamed to a handheld (Steam Deck) through Apollo or Sunshine: they tell the app the client's frame rate. SmoovPlay
+// then draws at that rate (60, 90 or 120; a Deck OLED asks for 90) and full screen on the stream's virtual display,
+// whatever's saved for the desktop.
+function streamArgs() {
+  const fps = parseFloat(process.env.APOLLO_CLIENT_FPS || process.env.SUNSHINE_CLIENT_FPS || '');
+  if (!(fps > 0)) return [];
+  const hz = [60, 90, 120].reduce((a, b) => (Math.abs(b - fps) < Math.abs(a - fps) ? b : a));
+  return ['--hz', String(hz), '--fullscreen'];
+}
+
 function startSmoovPlay() {
-  startChild('smoovplay', [path.join(smoovplay.app, 'run.py'), '--source', 'tap', ...config.smoovplayArgs],
+  const extra = streamArgs();
+  if (extra.length) log('page', `[GreenFrame] streaming to ${process.env.APOLLO_CLIENT_NAME || 'a Moonlight client'}: SmoovPlay ${extra.join(' ')}`);
+  startChild('smoovplay', [path.join(smoovplay.app, 'run.py'), '--source', 'tap', ...config.smoovplayArgs, ...extra],
     smoovplay.app,
     (line) => { if (/^\[run\] playing\b/.test(line)) smoovplayShowing(true); },
     () => smoovplayShowing(false));

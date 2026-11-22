@@ -109,6 +109,22 @@ SmoovPlay's own settings (frame rate, upscaler, AI engine, full screen) are the 
 - SmoovPlay's delay test (**L**) doesn't work with GreenFrame yet. It needs to press a controller button on the
   console.
 
+## Playing on a Steam Deck (streamed from your PC)
+
+Your PC runs GreenFrame and SmoovPlay, and [Apollo](https://github.com/ClassicOldSong/Apollo) (a Sunshine fork with
+a built-in virtual display) streams the result to Moonlight on the Deck:
+
+1. On the PC, install Apollo and [ViGEmBus](https://github.com/nefarius/ViGEmBus/releases) (for the Deck's
+   controller). In Apollo's web UI → Applications → Add New: name `GreenFrame (Xbox)`, command `"<path>\GreenFrame.exe"`,
+   gamepad **X360**, and **Always create Virtual Display** on. Optionally, Configuration → Audio/Video → Advanced
+   display device options → *Deactivate other displays…*, so the windows open on the Deck's virtual display.
+2. On the Deck, install Moonlight (Discover, in desktop mode), add your PC, and enter its PIN in Apollo's PIN page.
+   Set Moonlight to 1280×800 at 90 fps (OLED) or 60 fps (LCD).
+3. Start **GreenFrame (Xbox)** from Moonlight. When Apollo launches it, GreenFrame tells SmoovPlay to draw at the
+   Deck's frame rate (`APOLLO_CLIENT_FPS`: 60, 90 or 120) and full screen, whatever's saved for your desktop.
+
+Expect more delay than playing on the PC: Remote Play, frame generation and a second stream add up.
+
 ## Troubleshooting
 
 Open **GreenFrame → Open logs folder**:
