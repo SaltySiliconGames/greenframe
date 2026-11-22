@@ -173,6 +173,12 @@ function startSmoovPlay() {
 let minimisedForSmoovPlay = false;
 function smoovplayShowing(on) {
   if (!win) return;
+  // Streamed through Apollo/Sunshine (e.g. to a Steam Deck), a minimised window stops getting the virtual controller
+  // (tested on a Deck): stay open behind SmoovPlay's full-screen window instead.
+  if (on && config.minimiseWhilePlaying && streamArgs().length) {
+    log('page', '[GreenFrame] SmoovPlay is showing the picture: staying open behind it while streaming (controller)');
+    return;
+  }
   if (on && config.minimiseWhilePlaying && !win.isMinimized()) {
     log('page', '[GreenFrame] SmoovPlay is showing the picture: minimising GreenFrame');
     minimisedForSmoovPlay = true;
