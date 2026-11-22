@@ -102,14 +102,14 @@ const bridgeScript = app.isPackaged
 const children = {};
 
 // Starts a Python child, logging its output to logs/<name>.log; onLine (optional) sees each line of it.
-function startChild(name, args, cwd, onLine, onExit) {
+function startChild(name, args, cwd, onLine, onExit, extraEnv) {
   stopChild(name);
   fs.mkdirSync(logDir, { recursive: true });
   const out = fs.openSync(path.join(logDir, `${name}.log`), 'a');
   fs.writeSync(out, `\n===== ${new Date().toISOString()} ${smoovplay.python} ${args.join(' ')}\n`);
   const p = spawn(smoovplay.python, ['-u', ...args], {
     cwd, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'],
-    env: Object.assign({}, process.env, { PYTHONUNBUFFERED: '1' }),
+    env: Object.assign({}, process.env, { PYTHONUNBUFFERED: '1' }, extraEnv || {}),
   });
   let partial = '';
   const take = (chunk) => {
@@ -167,7 +167,10 @@ function startSmoovPlay() {
   startChild('smoovplay', [path.join(smoovplay.app, 'run.py'), '--source', 'tap', ...config.smoovplayArgs, ...extra],
     smoovplay.app,
     (line) => { if (/^\[run\] playing\b/.test(line)) smoovplayShowing(true); },
-    () => smoovplayShowing(false));
+    () => smoovplayShowing(false),
+    // Streaming: SmoovPlay's HDR full-screen presentation (DXGI flip, when Windows' HDR is on, as on a virtual
+    // display a Moonlight client asked HDR of) froze the picture in Apollo's capture; use its OpenGL presentation.
+    extra.length ? { FRAMEGEN_KEEP_HDR: '0' } : null);
 }
 
 let minimisedForSmoovPlay = false;
